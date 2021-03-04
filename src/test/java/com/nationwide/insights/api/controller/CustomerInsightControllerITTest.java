@@ -1,4 +1,4 @@
-package com.nationwide.insights.controller;
+package com.nationwide.insights.api.controller;
 
 import TestUtils.JsonHelper;
 import com.nationwide.insights.domain.Insight;
@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+import static java.lang.String.format;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -78,16 +79,18 @@ public class CustomerInsightControllerITTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/customer/insights/99 when 200 but customer insight does not exist")
-    void getCustomerInsightByIdButDoesNotExistTest() throws Exception {
+    @DisplayName("GET /api/v1/customer/insights/99 when 404 customer id not found")
+    void getCustomerInsightByIdButCustomerNotFoundTest() throws Exception {
         // When
         mockMvc.perform(MockMvcRequestBuilders
                 .get("/api/v1/customer/insights/99")
                 .contentType("application/json;charset=UTF-8"))
                 // Then
-                .andExpect(status().isOk())
+                .andExpect(status().isNotFound())
                 .andExpect(content().contentType("application/json;charset=UTF-8"))
-                .andExpect(content().string("[]"));
+                .andExpect(jsonPath("$.statusCode", is(404)))
+                .andExpect(jsonPath("$.message", containsString("Customer with id 99 not found")))
+                .andExpect(jsonPath("$.description", is("uri=/api/v1/customer/insights/99")));
     }
 
     @Test
@@ -99,11 +102,27 @@ public class CustomerInsightControllerITTest {
                 .get("/api/v1/customer/insights/" + notPositiveNumeric)
                 .contentType("application/json;charset=UTF-8"))
                 // Then
+                .andExpect(status().isBadRequest())
                 .andExpect(content().contentType("application/json;charset=UTF-8"))
                 .andExpect(jsonPath("$.statusCode", is(400)))
                 .andExpect(jsonPath("$.message", containsString("Customer id must be greater than 0")))
-                .andExpect(jsonPath("$.description", is("uri=/api/v1/customer/insights/0")))
-                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.description", is("uri=/api/v1/customer/insights/0")));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/customer/insights/1 when MEDIA TYPE NOT SUPPORTED")
+    void getCustomerInsightByIdMediaTypeNotSupported415Test() throws Exception {
+        // When
+        String badContentType = "text/plain";
+        mockMvc.perform(MockMvcRequestBuilders
+                .get("/api/v1/customer/insights/1")
+                .contentType(badContentType))
+                // Then
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.statusCode", is(415)))
+                .andExpect(jsonPath("$.message",
+                        containsString(format("Content type '%s' not supported", badContentType))))
+                .andExpect(jsonPath("$.description", is("uri=/api/v1/customer/insights/1")))
                 .andReturn();
     }
 }

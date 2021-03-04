@@ -1,5 +1,6 @@
 package com.nationwide.insights.service;
 
+import com.nationwide.insights.api.exception.TransactionNotFoundException;
 import com.nationwide.insights.domain.Insight;
 import com.nationwide.insights.domain.customer.Customer;
 import com.nationwide.insights.domain.transactions.TransactionRepository;
@@ -20,18 +21,20 @@ import java.util.List;
 import static com.nationwide.insights.service.TransactionCategory.BILL;
 import static com.nationwide.insights.service.TransactionCategory.CAFES;
 import static com.nationwide.insights.service.TransactionCategory.RESTAURANTS;
+import static java.lang.String.format;
 import static java.math.BigDecimal.valueOf;
 import static java.time.LocalDate.now;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doReturn;
 
 @SpringBootTest
 @TestPropertySource(locations = "classpath:application-local.properties")
 @ActiveProfiles("test")
-public class CustomerInsightServiceTest {
+public class CustomerInsightsServiceTest {
 
     @Autowired
     CustomerInsightsService service;
@@ -521,5 +524,18 @@ public class CustomerInsightServiceTest {
 
         // Then
         assertEquals(asList(new Insight("Your latest Vodafone bill is £50 more than previous months")), spendingInsights);
+    }
+
+    @DisplayName("transaction not found when customer with requested id not found")
+    @Test
+    public void transactionNotFoundTest() {
+        // Given
+        long customerDoesNotExist = 99L;
+
+        // When
+        TransactionNotFoundException exception = assertThrows(TransactionNotFoundException.class, () ->
+                service.customerInsightsById(customerDoesNotExist));
+
+        assertEquals(format("Customer with id %d not found", customerDoesNotExist), exception.getMessage());
     }
 }

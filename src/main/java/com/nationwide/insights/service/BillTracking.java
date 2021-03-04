@@ -4,7 +4,6 @@ import com.nationwide.insights.domain.Insight;
 import com.nationwide.insights.domain.transactions.Transactions;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -12,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import static java.math.RoundingMode.CEILING;
 import static java.util.Comparator.comparing;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toUnmodifiableList;
@@ -26,21 +26,26 @@ public class BillTracking implements IBillTracking, ITransform {
     @Override
     public List<Insight> billTrackingInsight(Map<String, List<Transactions>> transactionByVendor) {
 
+        Map<String, List<CustomerInsight>> mapInsightsByVendor = transformToInsightGroup(transactionByVendor);
+
+        return mapInsightsByVendor.entrySet().stream()
+                .map(Map.Entry::getValue)
+                .map(this::combineLikenedInsights)
+                .map(this::generateThisRecentInsight)
+                .filter(Objects::nonNull)
+                .flatMap(Collection::stream)
+                .flatMap(ci -> ci.getInsights().stream())
+                .collect(toUnmodifiableList());
+    }
+
+    private Map<String, List<CustomerInsight>> transformToInsightGroup(Map<String, List<Transactions>> transactionByVendor) {
         Map<String, List<CustomerInsight>> mapInsightsByVendor =
                 transactionByVendor.entrySet().stream()
                         .flatMap(entry -> entry.getValue().stream()
                                 .map(this::mapToInsightFrom))
                         .sorted(comparing(CustomerInsight::getDate).reversed())
                         .collect(groupingBy(CustomerInsight::getVendor, LinkedHashMap::new, toUnmodifiableList()));
-
-        return mapInsightsByVendor.entrySet().stream()
-                .map(Map.Entry::getValue)
-                .map(dateOrderedList -> combineLikenedInsights(dateOrderedList))
-                .map(vList -> generateThisRecentInsight(vList))
-                .filter(Objects::nonNull)
-                .flatMap(insights -> insights.stream())
-                .flatMap(ci -> ci.getInsights().stream())
-                .collect(toUnmodifiableList());
+        return mapInsightsByVendor;
     }
 
     private List<CustomerInsight> combineLikenedInsights(List<CustomerInsight> dateOrderedVendorList) {
@@ -56,7 +61,7 @@ public class BillTracking implements IBillTracking, ITransform {
                             .reduce((mostRecent, next) -> {
                                 BigDecimal add = mostRecent.getAmount().add(next.getAmount());
                                 // not sure about precision here as the spec omits precision
-                                mostRecent.setAmount(add.divide(BigDecimal.valueOf(2L), RoundingMode.CEILING));
+                                mostRecent.setAmount(add.divide(BigDecimal.valueOf(2L), CEILING));
                                 return mostRecent;
                             }).stream().map(mostRecent -> {
                                 ArrayList<CustomerInsight> insights = new ArrayList<>();

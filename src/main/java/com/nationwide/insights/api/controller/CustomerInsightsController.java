@@ -16,6 +16,7 @@ import java.util.List;
 
 import static java.lang.String.format;
 import static org.slf4j.LoggerFactory.getLogger;
+import static org.springframework.http.ResponseEntity.ok;
 
 @Validated
 @RestController
@@ -35,6 +36,6 @@ public class CustomerInsightsController {
         LOG.info(format("preparing to return customer insight(s) by id: %s", id));
         List<Insight> insights = service.customerInsightsById(id);
         LOG.info(format("insights retrieved. insights: %s", insights));
-        return ResponseEntity.ok(insights);
+        return ok(insights);
     }
 }

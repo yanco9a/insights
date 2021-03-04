@@ -2,8 +2,10 @@ package com.nationwide.insights.api.exception;
 
 import org.slf4j.Logger;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
@@ -21,6 +23,19 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 @ControllerAdvice
 public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionHandler {
     private static final Logger LOG = getLogger(RestResponseEntityExceptionHandler.class.getCanonicalName());
+
+    @Override
+    protected ResponseEntity<Object> handleHttpMediaTypeNotSupported(
+            HttpMediaTypeNotSupportedException ex, HttpHeaders headers, HttpStatus status, WebRequest request) {
+        ErrorMessage message = new ErrorMessage(
+                status.value(),
+                LocalDateTime.now(),
+                ex.getMessage(),
+                request.getDescription(false));
+        LOG.debug(format("exception: %s", ex.getLocalizedMessage()));
+        LOG.debug(format("request: %s", request));
+        return new ResponseEntity<>(message, getHttpHeaders(), status);
+    }
 
     @ExceptionHandler(TransactionNotFoundException.class)
     public ResponseEntity<Object> resourceNotFoundException(
